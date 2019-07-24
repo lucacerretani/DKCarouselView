@@ -254,12 +254,13 @@ typedef void(^DKCarouselViewTapBlock)();
     NSInteger index = 0;
     for (DKCarouselItem *item in _items) {
         DKClickableImageView *itemView = [DKClickableImageView new];
-        
         itemView.userInteractionEnabled = YES;
+        itemView.bounds = self.bounds;
+        
         if ([item isKindOfClass:[DKCarouselViewItem class]]) {
             UIView *customView = [(DKCarouselViewItem *)item view];
-            customView.frame = itemView.bounds;
-            customView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            customView.frame = self.frame;
+            //customView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             [itemView addSubview:customView];
         } else {
             assert(0);
@@ -343,35 +344,43 @@ typedef void(^DKCarouselViewTapBlock)();
 }
 
 - (void)setupViews {
+    if (@available(iOS 11, *)) {
+        self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        self.scrollView.contentInset = UIEdgeInsetsMake(0, 0, 0, 0);
+        
+        //NSLog(@"setupViews - adjContentInset: %@", NSStringFromUIEdgeInsets((UIEdgeInsets)[self.scrollView adjustedContentInset]));
+        //NSLog(@"setupViews - safeAreaInsets: %@", NSStringFromUIEdgeInsets((UIEdgeInsets)[self.scrollView safeAreaInsets]));
+    }
+    
     if (self.finite || self.carouselItemViews.count == 1) {
-        self.scrollView.contentSize = CGSizeMake(kScrollViewFrameWidth * self.items.count,
-                                                 0);
+        
+        
+        self.scrollView.contentSize = CGSizeMake(kScrollViewFrameWidth * self.items.count, kScrollViewFrameHeight);
+        self.scrollView.contentOffset = CGPointMake(0,0);
+        
+        
         for (int i = 0; i < self.carouselItemViews.count; i++) {
             UIView *view = self.carouselItemViews[i];
+            
             if (view.superview == nil) {
                 [self.scrollView addSubview:view];
             }
             
-            view.frame = CGRectMake(i * kScrollViewFrameWidth,
-                                    0,
-                                    kScrollViewFrameWidth,
-                                    kScrollViewFrameHeight);
+            view.frame = CGRectMake(i * kScrollViewFrameWidth, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
+            NSLog(@"setupViews - carouselItemViews: %@", NSStringFromCGRect(view.frame));
         }
     } else {
         [self.carouselItemViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
         
-        CGFloat originX,
-        originY = 0;
-        
-        originX = CGRectGetWidth(self.scrollView.bounds);
+        CGFloat originX = CGRectGetWidth(self.scrollView.bounds);
         self.scrollView.contentSize = CGSizeMake(kScrollViewFrameWidth * 3, kScrollViewFrameHeight);
+        self.scrollView.contentOffset = CGPointMake(originX, 0);
         
         [self insertPreviousPage];
         
-        self.scrollView.contentOffset = CGPointMake(originX, originY);
-        
         UIView *currentView = self.carouselItemViews[self.currentPage];
-        currentView.frame = CGRectMake(originX, originY, kScrollViewFrameWidth, kScrollViewFrameHeight);
+        currentView.frame = CGRectMake(originX, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
+        NSLog(@"setupViews infinite - currentView: %@", NSStringFromCGRect(currentView.frame));
         [self.scrollView addSubview:currentView];
         
         [self insertNextPage];
@@ -384,37 +393,38 @@ typedef void(^DKCarouselViewTapBlock)();
     NSInteger index = GetPreviousIndex();
     UIView *currentView = self.carouselItemViews[index];
     currentView.frame = CGRectMake(0, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
+    NSLog(@"insertPreviousPage: %@", NSStringFromCGRect(currentView.frame));
     [self.scrollView addSubview:currentView];
 }
 
 - (void)insertNextPage {
     NSInteger index = GetNextIndex();
     UIView *currentView = self.carouselItemViews[index];
-    currentView.frame = CGRectMake(kScrollViewFrameWidth * 2, 0,
-                                   kScrollViewFrameWidth, kScrollViewFrameHeight);
+    currentView.frame = CGRectMake(kScrollViewFrameWidth * 2, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
+    NSLog(@"insertNextPage: %@", NSStringFromCGRect(currentView.frame));
     [self.scrollView addSubview:currentView];
 }
 
 #pragma mark - UIScrollView Delegate Methods
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    if (scrollView.isDragging) { 
+    if (scrollView.isDragging) {
         self.autoPagingTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:self.autoPagingTimer.timeInterval];
         
         // Removed - causes weird issue when only 2 slides present
         /*if (self.carouselItemViews.count == 2) {
-            if (scrollView.contentOffset.x < kScrollViewFrameWidth) {
-                UIView *previousView = self.carouselItemViews[GetPreviousIndex()];
-                if (!CGRectEqualToRect(CGRectMake(0, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), previousView.frame)) {
-                    [self insertPreviousPage];
-                }
-            } else if (scrollView.contentOffset.x > kScrollViewFrameWidth * 2) {
-                UIView *nextView = self.carouselItemViews[GetNextIndex()];
-                if (!CGRectEqualToRect(CGRectMake(kScrollViewFrameWidth * 2, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), nextView.frame)) {
-                    [self insertNextPage];
-                }
-            }
-        }*/
+         if (scrollView.contentOffset.x < kScrollViewFrameWidth) {
+         UIView *previousView = self.carouselItemViews[GetPreviousIndex()];
+         if (!CGRectEqualToRect(CGRectMake(0, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), previousView.frame)) {
+         [self insertPreviousPage];
+         }
+         } else if (scrollView.contentOffset.x > kScrollViewFrameWidth * 2) {
+         UIView *nextView = self.carouselItemViews[GetNextIndex()];
+         if (!CGRectEqualToRect(CGRectMake(kScrollViewFrameWidth * 2, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), nextView.frame)) {
+         [self insertNextPage];
+         }
+         }
+         }*/
         
         if (self.didScrollBlock != nil) {
             self.didScrollBlock(self, scrollView.contentOffset.x);
