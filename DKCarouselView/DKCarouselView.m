@@ -3,13 +3,13 @@
 //  DKCarouselView
 //
 //  Created by ZhangAo on 10/31/11.
-//  Modified by Jiyee Sheng on 02/11/15
+//  Modified by Nedim Erkocevic on 25/07/19.
 //  Copyright 2011 DKCarouselView. All rights reserved.
 //
 
 #import "DKCarouselView.h"
 
-typedef void(^DKCarouselViewTapBlock)();
+typedef void(^DKCarouselViewTapBlock)(void);
 
 @interface DKClickableImageView : UIImageView
 
@@ -124,6 +124,11 @@ typedef void(^DKCarouselViewTapBlock)();
     scrollView.scrollsToTop = NO;
     scrollView.bounces = _bounce;
     scrollView.delegate = self;
+    
+    if (@available(iOS 11, *)) {
+        scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        scrollView.contentInset = UIEdgeInsetsMake(0, 0, 0, 0);
+    }
     
     self.indicatorTintColor = [UIColor whiteColor];
     self.indicatorTintColorUnselected = [UIColor lightGrayColor];
@@ -255,11 +260,10 @@ typedef void(^DKCarouselViewTapBlock)();
     for (DKCarouselItem *item in _items) {
         DKClickableImageView *itemView = [DKClickableImageView new];
         itemView.userInteractionEnabled = YES;
-        itemView.bounds = self.bounds;
         
         if ([item isKindOfClass:[DKCarouselViewItem class]]) {
             UIView *customView = [(DKCarouselViewItem *)item view];
-            customView.frame = self.frame;
+            customView.frame = itemView.bounds;
             //customView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             [itemView addSubview:customView];
         } else {
@@ -272,14 +276,14 @@ typedef void(^DKCarouselViewTapBlock)();
             }
         }];
         
+        
         index++;
         [self.carouselItemViews addObject:itemView];
+        [self.scrollView addSubview:itemView]; // Adding item to scrollView for proper render
     }
     
-    [self setupViews];
     self.lastSize = CGSizeZero;
-    
-    [self setNeedsLayout];
+    [self setNeedsLayout]; // Run layout as needed, not setting items manually.
 }
 
 - (void)setDidSelectBlock:(DKCarouselViewDidSelectBlock)didSelectBlock {
@@ -335,8 +339,7 @@ typedef void(^DKCarouselViewTapBlock)();
 - (void)pagingNext {
     if (self.pageControl.numberOfPages > 1) {
         if (self.finite) {
-            [self.scrollView setContentOffset:CGPointMake(kScrollViewFrameWidth * GetNextIndex(), 0)
-                                     animated:YES];
+            [self.scrollView setContentOffset:CGPointMake(kScrollViewFrameWidth * GetNextIndex(), 0) animated:YES];
         } else {
             [self.scrollView setContentOffset:CGPointMake(2 * kScrollViewFrameWidth, 0) animated:YES];
         }
@@ -344,20 +347,10 @@ typedef void(^DKCarouselViewTapBlock)();
 }
 
 - (void)setupViews {
-    if (@available(iOS 11, *)) {
-        self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-        self.scrollView.contentInset = UIEdgeInsetsMake(0, 0, 0, 0);
-        
-        //NSLog(@"setupViews - adjContentInset: %@", NSStringFromUIEdgeInsets((UIEdgeInsets)[self.scrollView adjustedContentInset]));
-        //NSLog(@"setupViews - safeAreaInsets: %@", NSStringFromUIEdgeInsets((UIEdgeInsets)[self.scrollView safeAreaInsets]));
-    }
-    
     if (self.finite || self.carouselItemViews.count == 1) {
-        
         
         self.scrollView.contentSize = CGSizeMake(kScrollViewFrameWidth * self.items.count, kScrollViewFrameHeight);
         self.scrollView.contentOffset = CGPointMake(0,0);
-        
         
         for (int i = 0; i < self.carouselItemViews.count; i++) {
             UIView *view = self.carouselItemViews[i];
@@ -367,7 +360,6 @@ typedef void(^DKCarouselViewTapBlock)();
             }
             
             view.frame = CGRectMake(i * kScrollViewFrameWidth, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
-            NSLog(@"setupViews - carouselItemViews: %@", NSStringFromCGRect(view.frame));
         }
     } else {
         [self.carouselItemViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
@@ -380,7 +372,6 @@ typedef void(^DKCarouselViewTapBlock)();
         
         UIView *currentView = self.carouselItemViews[self.currentPage];
         currentView.frame = CGRectMake(originX, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
-        NSLog(@"setupViews infinite - currentView: %@", NSStringFromCGRect(currentView.frame));
         [self.scrollView addSubview:currentView];
         
         [self insertNextPage];
@@ -393,7 +384,6 @@ typedef void(^DKCarouselViewTapBlock)();
     NSInteger index = GetPreviousIndex();
     UIView *currentView = self.carouselItemViews[index];
     currentView.frame = CGRectMake(0, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
-    NSLog(@"insertPreviousPage: %@", NSStringFromCGRect(currentView.frame));
     [self.scrollView addSubview:currentView];
 }
 
@@ -401,7 +391,6 @@ typedef void(^DKCarouselViewTapBlock)();
     NSInteger index = GetNextIndex();
     UIView *currentView = self.carouselItemViews[index];
     currentView.frame = CGRectMake(kScrollViewFrameWidth * 2, 0, kScrollViewFrameWidth, kScrollViewFrameHeight);
-    NSLog(@"insertNextPage: %@", NSStringFromCGRect(currentView.frame));
     [self.scrollView addSubview:currentView];
 }
 
@@ -445,6 +434,7 @@ typedef void(^DKCarouselViewTapBlock)();
         } else if (currentOffsetIndex == maxmiumOffsetIndex) {  // scroll to next page
             self.currentPage = GetNextIndex();
         }
+        
         [self setupViews];
     }
     
@@ -455,7 +445,7 @@ typedef void(^DKCarouselViewTapBlock)();
     self.pageControl.currentPage = self.currentPage;
 }
 
-// 针对scrollRectVisible:animated:
+// scrollRectVisible:animated:
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
     [self scrollViewDidEndDecelerating:scrollView];
 }
