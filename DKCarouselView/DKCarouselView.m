@@ -280,7 +280,7 @@ typedef void(^DKCarouselViewTapBlock)(void);
         
         index++;
         [self.carouselItemViews addObject:itemView];
-        //[self.scrollView addSubview:itemView]; // Adding item to scrollView for proper render
+        [self.scrollView addSubview:itemView]; // Adding item to scrollView for proper render
     }
     
     [self setupViews];
