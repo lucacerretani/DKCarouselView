@@ -260,11 +260,10 @@ typedef void(^DKCarouselViewTapBlock)(void);
     for (DKCarouselItem *item in _items) {
         DKClickableImageView *itemView = [DKClickableImageView new];
         itemView.userInteractionEnabled = YES;
-        itemView.bounds = self.bounds;
         
         if ([item isKindOfClass:[DKCarouselViewItem class]]) {
             UIView *customView = [(DKCarouselViewItem *)item view];
-            customView.frame = self.frame;
+            customView.frame = itemView.bounds;
             //customView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             [itemView addSubview:customView];
         } else {
