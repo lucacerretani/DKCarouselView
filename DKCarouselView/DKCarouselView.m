@@ -260,10 +260,11 @@ typedef void(^DKCarouselViewTapBlock)(void);
     for (DKCarouselItem *item in _items) {
         DKClickableImageView *itemView = [DKClickableImageView new];
         itemView.userInteractionEnabled = YES;
+        itemView.bounds = self.bounds;
         
         if ([item isKindOfClass:[DKCarouselViewItem class]]) {
             UIView *customView = [(DKCarouselViewItem *)item view];
-            customView.frame = itemView.bounds;
+            customView.frame = self.frame;
             //customView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             [itemView addSubview:customView];
         } else {
@@ -279,11 +280,13 @@ typedef void(^DKCarouselViewTapBlock)(void);
         
         index++;
         [self.carouselItemViews addObject:itemView];
-        [self.scrollView addSubview:itemView]; // Adding item to scrollView for proper render
+        //[self.scrollView addSubview:itemView]; // Adding item to scrollView for proper render
     }
     
+    [self setupViews];
     self.lastSize = CGSizeZero;
-    [self setNeedsLayout]; // Run layout as needed, not setting items manually.
+    
+    [self setNeedsLayout];
 }
 
 - (void)setDidSelectBlock:(DKCarouselViewDidSelectBlock)didSelectBlock {
@@ -399,22 +402,7 @@ typedef void(^DKCarouselViewTapBlock)(void);
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     if (scrollView.isDragging) {
         self.autoPagingTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:self.autoPagingTimer.timeInterval];
-        
-        // Removed - causes weird issue when only 2 slides present
-        /*if (self.carouselItemViews.count == 2) {
-         if (scrollView.contentOffset.x < kScrollViewFrameWidth) {
-         UIView *previousView = self.carouselItemViews[GetPreviousIndex()];
-         if (!CGRectEqualToRect(CGRectMake(0, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), previousView.frame)) {
-         [self insertPreviousPage];
-         }
-         } else if (scrollView.contentOffset.x > kScrollViewFrameWidth * 2) {
-         UIView *nextView = self.carouselItemViews[GetNextIndex()];
-         if (!CGRectEqualToRect(CGRectMake(kScrollViewFrameWidth * 2, 0, kScrollViewFrameWidth, kScrollViewFrameHeight), nextView.frame)) {
-         [self insertNextPage];
-         }
-         }
-         }*/
-        
+
         if (self.didScrollBlock != nil) {
             self.didScrollBlock(self, scrollView.contentOffset.x);
         }
